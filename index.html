@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Finance Tracker</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Finance Tracker</h1>
+        </header>
+
+        <main>
+            <div class="balance-card">
+                <h2>Current Account Balance</h2>
+                <div class="balance-info">
+                    <p class="balance-amount" id="balance">$0.00</p>
+                    <div class="countdown-timer">
+                        <div class="countdown-icon"></div>
+                        <div class="countdown-text">
+                            <span class="countdown-label">Days until Payday:</span>
+                            <span class="countdown-days" id="countdownDays">0</span>
+                        </div>
+                    </div>
+                </div>
+                <button id="editMoneyBtn" class="edit-money-btn">✏️ Edit Balance</button>
+            </div>
+
+            <div class="transaction-form">
+                <form id="transactionForm">
+                    <div class="categories-section">
+                        <div class="category-grid">
+                            <div class="category-card" data-category="Rent">
+                                <div class="category-header">
+                                    <div class="category-icon">🏠</div>
+                                    <div class="category-name">Rent</div>
+                                </div>
+                                <div class="expense-form-container">
+                                    <input type="text" class="expense-name" placeholder="Expense name">
+                                    <input type="number" class="expense-amount" placeholder="Amount" step="0.01" min="0">
+                                    <button type="button" class="add-expense-btn">Add Expense</button>
+                                    <button type="button" class="view-history-btn">View History</button>
+                                </div>
+                            </div>
+                            <div class="category-card" data-category="Investments">
+                                <div class="category-header">
+                                    <div class="category-icon">📈</div>
+                                    <div class="category-name">Investments</div>
+                                </div>
+                                <div class="expense-form-container">
+                                    <input type="text" class="expense-name" placeholder="Expense name">
+                                    <input type="number" class="expense-amount" placeholder="Amount" step="0.01" min="0">
+                                    <button type="button" class="add-expense-btn">Add Expense</button>
+                                    <button type="button" class="view-history-btn">View History</button>
+                                </div>
+                            </div>
+                            <div class="category-card" data-category="Food">
+                                <div class="category-header">
+                                    <div class="category-icon">🍔</div>
+                                    <div class="category-name">Food</div>
+                                </div>
+                                <div class="expense-form-container">
+                                    <input type="text" class="expense-name" placeholder="Expense name">
+                                    <input type="number" class="expense-amount" placeholder="Amount" step="0.01" min="0">
+                                    <button type="button" class="add-expense-btn">Add Expense</button>
+                                    <button type="button" class="view-history-btn">View History</button>
+                                </div>
+                            </div>
+                            <div class="category-card" data-category="Clothes">
+                                <div class="category-header">
+                                    <div class="category-icon">👕</div>
+                                    <div class="category-name">Clothes</div>
+                                </div>
+                                <div class="expense-form-container">
+                                    <input type="text" class="expense-name" placeholder="Expense name">
+                                    <input type="number" class="expense-amount" placeholder="Amount" step="0.01" min="0">
+                                    <button type="button" class="add-expense-btn">Add Expense</button>
+                                    <button type="button" class="view-history-btn">View History</button>
+                                </div>
+                            </div>
+                            <div class="category-card" data-category="Utilities">
+                                <div class="category-header">
+                                    <div class="category-icon">💡</div>
+                                    <div class="category-name">Utilities</div>
+                                </div>
+                                <div class="expense-form-container">
+                                    <input type="text" class="expense-name" placeholder="Expense name">
+                                    <input type="number" class="expense-amount" placeholder="Amount" step="0.01" min="0">
+                                    <button type="button" class="add-expense-btn">Add Expense</button>
+                                    <button type="button" class="view-history-btn">View History</button>
+                                </div>
+                            </div>
+                            <div class="category-card" data-category="Travel">
+                                <div class="category-header">
+                                    <div class="category-icon">✈️</div>
+                                    <div class="category-name">Travel</div>
+                                </div>
+                                <div class="expense-form-container">
+                                    <input type="text" class="expense-name" placeholder="Expense name">
+                                    <input type="number" class="expense-amount" placeholder="Amount" step="0.01" min="0">
+                                    <button type="button" class="add-expense-btn">Add Expense</button>
+                                    <button type="button" class="view-history-btn">View History</button>
+                                </div>
+                            </div>
+                            <div class="category-card" data-category="Entertainment">
+                                <div class="category-header">
+                                    <div class="category-icon">🎮</div>
+                                    <div class="category-name">Entertainment</div>
+                                </div>
+                                <div class="expense-form-container">
+                                    <input type="text" class="expense-name" placeholder="Expense name">
+                                    <input type="number" class="expense-amount" placeholder="Amount" step="0.01" min="0">
+                                    <button type="button" class="add-expense-btn">Add Expense</button>
+                                    <button type="button" class="view-history-btn">View History</button>
+                                </div>
+                            </div>
+                            <div class="category-card" data-category="Other">
+                                <div class="category-header">
+                                    <div class="category-icon">📦</div>
+                                    <div class="category-name">Other</div>
+                                </div>
+                                <div class="expense-form-container">
+                                    <input type="text" class="expense-name" placeholder="Expense name">
+                                    <input type="number" class="expense-amount" placeholder="Amount" step="0.01" min="0">
+                                    <button type="button" class="add-expense-btn">Add Expense</button>
+                                    <button type="button" class="view-history-btn">View History</button>
+                                </div>
+                            </div>
+                        </div>
+                        <input type="hidden" id="category" required>
+                    </div>
+                </form>
+            </div>
+        </main>
+    </div>
+
+    <!-- Category History Modal -->
+    <div id="categoryHistoryModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="categoryHistoryTitle">Category History</h2>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div class="month-navigation">
+                <button id="prevMonth" class="month-nav-btn">&lt; Previous Month</button>
+                <span id="currentMonth" class="current-month">October 2025</span>
+                <button id="nextMonth" class="month-nav-btn">Next Month &gt;</button>
+            </div>
+            <div class="modal-body">
+                <div id="categoryHistoryList" class="history-list">
+                    <!-- History items will be populated here -->
+                </div>
+                <div id="categoryHistoryTotal" class="history-total">
+                    <!-- Total will be shown here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
