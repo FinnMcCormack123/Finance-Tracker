@@ -87,6 +87,24 @@ function init() {
     updateCountdown();
     // Update countdown every hour
     setInterval(updateCountdown, 3600000);
+
+    // Wire up export/import after DOM ready
+    const exportBtn = document.getElementById('exportBtn');
+    const importBtn = document.getElementById('importBtn');
+    const importInput = document.getElementById('importInput');
+
+    if (exportBtn) {
+        exportBtn.addEventListener('click', exportData);
+    }
+    if (importBtn && importInput) {
+        importBtn.addEventListener('click', () => importInput.click());
+        importInput.addEventListener('change', (e) => {
+            const file = e.target.files && e.target.files[0];
+            if (file) importDataFromFile(file);
+            // Reset value so same file can be selected again if needed
+            e.target.value = '';
+        });
+    }
 }
 
 // Setup category card selection
@@ -314,6 +332,7 @@ function formatCurrency(amount) {
 // Save to localStorage
 function saveToLocalStorage() {
     localStorage.setItem('transactions', JSON.stringify(transactions));
+    localStorage.setItem('balanceOffset', balanceOffset.toString());
 }
 
 // Edit account balance
@@ -718,3 +737,69 @@ function updateCountdown() {
         }
     }
 }
+
+// =====================
+// Data Export / Import
+// =====================
+// Quick Checklist (see DATA_STORAGE.md):
+// [x] Export button wired
+// [x] Import button wired
+// [x] Backup JSON includes transactions + balanceOffset
+// [x] Import restores and saves
+// [x] Basic validation & user feedback
+
+// Export all current finance data to a downloadable JSON file
+function exportData() {
+    try {
+        const bundle = {
+            exportVersion: 1,
+            exportedAt: new Date().toISOString(),
+            transactions: transactions,
+            balanceOffset: balanceOffset
+        };
+        const json = JSON.stringify(bundle, null, 2);
+        const blob = new Blob([json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `finance-tracker-backup-${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(a); // Safari requires element in DOM
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    } catch (err) {
+        alert('Export failed: ' + err.message);
+    }
+}
+
+// Import data from a selected JSON file
+function importDataFromFile(file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const parsed = JSON.parse(e.target.result);
+            if (!parsed || typeof parsed !== 'object') throw new Error('Invalid JSON structure');
+            if (!Array.isArray(parsed.transactions)) throw new Error('Missing transactions array');
+            // Basic validation of transaction shape (optional, lightweight)
+            parsed.transactions.forEach(t => {
+                if (typeof t !== 'object' || t === null) throw new Error('Invalid transaction entry');
+                if (typeof t.amount !== 'number' || isNaN(t.amount)) throw new Error('Transaction amount invalid');
+                if (!t.type || (t.type !== 'income' && t.type !== 'expense')) throw new Error('Transaction type invalid');
+                if (!t.date) throw new Error('Transaction date missing');
+            });
+            transactions = parsed.transactions;
+            balanceOffset = typeof parsed.balanceOffset === 'number' ? parsed.balanceOffset : 0;
+            saveToLocalStorage();
+            updateUI();
+            alert('Import successful');
+        } catch (err) {
+            alert('Import failed: ' + err.message);
+        }
+    };
+    reader.readAsText(file);
+}
+
+// Expose functions to window for potential manual triggering (optional)
+window.exportData = exportData;
+window.importDataFromFile = importDataFromFile;

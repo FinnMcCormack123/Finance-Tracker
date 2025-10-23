@@ -146,6 +146,20 @@ header h1 {
     transform: translateY(0);
 }
 
+/* Backup (Export/Import) controls spacing */
+.backup-controls {
+    margin-top: 16px; /* Adds visual separation from the Edit Balance button */
+    display: flex;
+    justify-content: center;
+    gap: 14px; /* Space between export/import buttons */
+    flex-wrap: wrap; /* Wrap on small screens */
+}
+
+/* Optional: ensure consistent sizing if future custom styles added */
+.backup-controls .backup-btn {
+    min-width: 140px;
+}
+
 .summary-cards {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
