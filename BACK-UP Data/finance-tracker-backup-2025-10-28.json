@@ -1,0 +1,15 @@
+{
+  "exportVersion": 1,
+  "exportedAt": "2025-10-28T15:22:08.762Z",
+  "transactions": [
+    {
+      "id": 1761664926883,
+      "description": "Rent",
+      "amount": 200,
+      "type": "expense",
+      "category": "Rent",
+      "date": "2025-10-28T15:22:06.883Z"
+    }
+  ],
+  "balanceOffset": 2000
+}
