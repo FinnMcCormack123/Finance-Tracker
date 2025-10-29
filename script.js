@@ -218,6 +218,7 @@ function setupCategoryCards() {
 function updateUI() {
     updateSummary();
     displayTransactions();
+    updatePieChart();
 }
 
 // Calculate and update summary
@@ -276,6 +277,152 @@ function displayTransactions() {
         `;
         transactionsList.appendChild(li);
     });
+}
+
+// Update Pie Chart
+function updatePieChart() {
+    const canvas = document.getElementById('spendingPieChart');
+    const legendContainer = document.getElementById('chartLegend');
+    
+    if (!canvas || !legendContainer) return;
+    
+    const ctx = canvas.getContext('2d');
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    const radius = Math.min(centerX, centerY) - 20;
+    
+    // Clear canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Get category spending data
+    const categoryData = getCategorySpendingData();
+    
+    // If no expenses, show a message
+    if (categoryData.total === 0) {
+        ctx.font = '16px Segoe UI';
+        ctx.fillStyle = '#999';
+        ctx.textAlign = 'center';
+        ctx.fillText('No expenses yet', centerX, centerY);
+        legendContainer.innerHTML = '';
+        return;
+    }
+    
+    // Define colors for each category
+    const categoryColors = {
+        'Rent': '#FF6B6B',
+        'Investments': '#4ECDC4',
+        'Food': '#FFD93D',
+        'Clothes': '#95E1D3',
+        'Utilities': '#F38181',
+        'Travel': '#AA96DA',
+        'Entertainment': '#FCBAD3',
+        'Other': '#A8D8EA',
+        'Unspent': '#E0E0E0'
+    };
+    
+    // Calculate percentages and prepare data
+    const chartData = [];
+    
+    // Add category spending
+    for (const [category, amount] of Object.entries(categoryData.categories)) {
+        if (amount > 0) {
+            const percentage = (amount / categoryData.balance) * 100;
+            chartData.push({
+                label: category,
+                amount: amount,
+                percentage: percentage,
+                color: categoryColors[category] || '#999'
+            });
+        }
+    }
+    
+    // Add unspent money as grey section
+    if (categoryData.remaining > 0) {
+        const percentage = (categoryData.remaining / categoryData.balance) * 100;
+        chartData.push({
+            label: 'Unspent',
+            amount: categoryData.remaining,
+            percentage: percentage,
+            color: categoryColors['Unspent']
+        });
+    }
+    
+    // Draw pie chart
+    let currentAngle = -Math.PI / 2; // Start at top
+    
+    chartData.forEach(item => {
+        const sliceAngle = (item.percentage / 100) * 2 * Math.PI;
+        
+        // Draw slice
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY);
+        ctx.arc(centerX, centerY, radius, currentAngle, currentAngle + sliceAngle);
+        ctx.closePath();
+        ctx.fillStyle = item.color;
+        ctx.fill();
+        
+        // Draw border
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        
+        currentAngle += sliceAngle;
+    });
+    
+    // Update legend
+    legendContainer.innerHTML = '';
+    chartData.forEach(item => {
+        const legendItem = document.createElement('div');
+        legendItem.className = 'legend-item';
+        legendItem.innerHTML = `
+            <div class="legend-color" style="background-color: ${item.color}"></div>
+            <span class="legend-label">${item.label}:</span>
+            <span class="legend-percentage">${item.percentage.toFixed(1)}% (${formatCurrency(item.amount)})</span>
+        `;
+        legendContainer.appendChild(legendItem);
+    });
+}
+
+// Get category spending data
+function getCategorySpendingData() {
+    // Filter out balance adjustment transactions
+    const filteredTransactions = transactions.filter(t => 
+        !t.description.includes('Balance Adjustment') && 
+        !t.description.includes('Manual Balance Correction')
+    );
+    
+    const income = filteredTransactions
+        .filter(t => t.type === 'income')
+        .reduce((sum, t) => sum + t.amount, 0);
+    
+    const expenses = filteredTransactions
+        .filter(t => t.type === 'expense')
+        .reduce((sum, t) => sum + t.amount, 0);
+    
+    const balance = income - expenses + balanceOffset;
+    
+    // Calculate spending by category
+    const categories = {};
+    const categoryList = ['Rent', 'Investments', 'Food', 'Clothes', 'Utilities', 'Travel', 'Entertainment', 'Other'];
+    
+    categoryList.forEach(cat => {
+        categories[cat] = 0;
+    });
+    
+    filteredTransactions
+        .filter(t => t.type === 'expense')
+        .forEach(t => {
+            if (t.category && categories.hasOwnProperty(t.category)) {
+                categories[t.category] += t.amount;
+            }
+        });
+    
+    return {
+        categories: categories,
+        total: expenses,
+        remaining: balance,
+        balance: balance + expenses // Total money available (spent + unspent)
+    };
 }
 
 // Add transaction
