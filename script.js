@@ -1,6 +1,7 @@
 // Transaction data
 let transactions = JSON.parse(localStorage.getItem('transactions')) || [];
 let balanceOffset = parseFloat(localStorage.getItem('balanceOffset')) || 0;
+let startingBalances = JSON.parse(localStorage.getItem('startingBalances')) || {};
 
 // DOM elements
 const balanceEl = document.getElementById('balance');
@@ -10,6 +11,7 @@ const transactionForm = document.getElementById('transactionForm');
 const transactionsList = document.getElementById('transactionsList'); // May not exist
 const categoryInput = document.getElementById('category');
 const editMoneyBtn = document.getElementById('editMoneyBtn');
+const setStartingBalanceBtn = document.getElementById('setStartingBalanceBtn');
 const countdownDaysEl = document.getElementById('countdownDays');
 
 // Pay period utility functions (months start on 25th - payday)
@@ -84,6 +86,7 @@ function init() {
     transactionForm.addEventListener('submit', addTransaction);
     setupCategoryCards();
     editMoneyBtn.addEventListener('click', editBalance);
+    setStartingBalanceBtn.addEventListener('click', setStartingBalance);
     updateCountdown();
     // Update countdown every hour
     setInterval(updateCountdown, 3600000);
@@ -376,6 +379,53 @@ function editBalance() {
     }
 }
 
+// Get pay period key for starting balance storage
+function getPayPeriodKey(payPeriodStart) {
+    const date = new Date(payPeriodStart);
+    return `${date.getFullYear()}-${date.getMonth()}`;
+}
+
+// Set starting balance for current pay period
+function setStartingBalance() {
+    const currentPayPeriod = getPayPeriodStart(new Date());
+    const periodKey = getPayPeriodKey(currentPayPeriod);
+    const currentStartingBalance = startingBalances[periodKey] || 0;
+    const periodDisplay = getPayPeriodDisplay(currentPayPeriod);
+    
+    const newBalance = prompt(
+        `Set starting balance for ${periodDisplay}\nCurrent starting balance: ${formatCurrency(currentStartingBalance)}\nEnter new starting balance:`
+    );
+    
+    if (newBalance === null || newBalance === '') {
+        return; // User cancelled or entered nothing
+    }
+    
+    const parsedBalance = parseFloat(newBalance);
+    
+    if (isNaN(parsedBalance)) {
+        alert('Please enter a valid number');
+        return;
+    }
+    
+    // Store the starting balance for this pay period
+    startingBalances[periodKey] = parsedBalance;
+    localStorage.setItem('startingBalances', JSON.stringify(startingBalances));
+    
+    alert(`Starting balance set to ${formatCurrency(parsedBalance)} for ${periodDisplay}`);
+    
+    // If the category history modal is open, refresh it
+    const modal = document.getElementById('categoryHistoryModal');
+    if (modal && modal.style.display === 'block') {
+        updateHistoryForPayPeriod(currentHistoryCategory);
+    }
+}
+
+// Get starting balance for a pay period
+function getStartingBalance(payPeriodStart) {
+    const periodKey = getPayPeriodKey(payPeriodStart);
+    return startingBalances[periodKey] || 0;
+}
+
 // Global variables for pay period navigation
 let currentDisplayPayPeriod = getPayPeriodStart(new Date());
 let currentHistoryCategory = '';
@@ -488,18 +538,16 @@ function updateHistoryForPayPeriod(category) {
         // Calculate and show total with percentage
         const total = categoryTransactions.reduce((sum, t) => sum + t.amount, 0);
         
-        // Calculate the initial balance on the 25th (start of pay period)
-        const initialBalance = getInitialBalanceForPayPeriod(currentDisplayPayPeriod);
+        // Get the starting balance for this pay period
+        const startingBalance = getStartingBalance(currentDisplayPayPeriod);
         
-        // Calculate total percentage: sum of (each expense / initial balance * 100)
-        let totalPercentage = 0;
-        if (initialBalance > 0) {
-            totalPercentage = categoryTransactions.reduce((sum, t) => {
-                return sum + (t.amount / initialBalance * 100);
-            }, 0);
+        // Calculate percentage based on starting balance
+        let percentage = 0;
+        if (startingBalance > 0) {
+            percentage = (total / startingBalance) * 100;
         }
         
-        historyTotal.innerHTML = `Total Spent: ${formatCurrency(total)} (${totalPercentage.toFixed(2)}%)`;
+        historyTotal.innerHTML = `Total Spent: ${formatCurrency(total)} (${percentage.toFixed(2)}%)`;
     }
 }
 
