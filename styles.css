@@ -743,6 +743,13 @@ button:active {
     font-size: 1.3rem;
 }
 
+.pie-chart-container .month-navigation {
+    margin-bottom: 20px;
+    padding: 0;
+    background: transparent;
+    border-bottom: none;
+}
+
 #spendingPieChart {
     display: block;
     margin: 0 auto 20px;

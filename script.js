@@ -3,6 +3,11 @@ let transactions = JSON.parse(localStorage.getItem('transactions')) || [];
 let balanceOffset = parseFloat(localStorage.getItem('balanceOffset')) || 0;
 let startingBalances = JSON.parse(localStorage.getItem('startingBalances')) || {};
 
+// Global variables for pay period navigation
+let currentDisplayPayPeriod = null;
+let currentHistoryCategory = '';
+let currentPieChartPayPeriod = null;
+
 // DOM elements
 const balanceEl = document.getElementById('balance');
 const incomeEl = document.getElementById('income'); // May not exist
@@ -82,6 +87,10 @@ function getNextPayPeriod(currentPayPeriodStart) {
 init();
 
 function init() {
+    // Initialize pay period variables
+    currentDisplayPayPeriod = getPayPeriodStart(new Date());
+    currentPieChartPayPeriod = getPayPeriodStart(new Date());
+    
     updateUI();
     transactionForm.addEventListener('submit', addTransaction);
     setupCategoryCards();
@@ -108,6 +117,9 @@ function init() {
             e.target.value = '';
         });
     }
+    
+    // Set up pie chart month navigation
+    setupPieChartNavigation();
 }
 
 // Setup category card selection
@@ -287,6 +299,11 @@ function updatePieChart() {
     if (!canvas || !legendContainer) return;
     
     const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    
+    // Update the pie chart pay period display
+    updatePieChartPayPeriodDisplay();
+    
     const centerX = canvas.width / 2;
     const centerY = canvas.height / 2;
     const radius = Math.min(centerX, centerY) - 20;
@@ -294,15 +311,25 @@ function updatePieChart() {
     // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    // Get category spending data
-    const categoryData = getCategorySpendingData();
+    // Get category spending data for the current pie chart pay period
+    const categoryData = getCategorySpendingData(currentPieChartPayPeriod);
     
-    // If no expenses, show a message
-    if (categoryData.total === 0) {
+    // If no expenses and no starting balance, show a message
+    if (categoryData.total === 0 && categoryData.balance === 0) {
         ctx.font = '16px Segoe UI';
         ctx.fillStyle = '#999';
         ctx.textAlign = 'center';
         ctx.fillText('No expenses yet', centerX, centerY);
+        legendContainer.innerHTML = '';
+        return;
+    }
+    
+    // If balance is 0 but there are expenses (shouldn't normally happen), show message
+    if (categoryData.balance === 0 && categoryData.total > 0) {
+        ctx.font = '16px Segoe UI';
+        ctx.fillStyle = '#999';
+        ctx.textAlign = 'center';
+        ctx.fillText('Set starting balance for this period', centerX, centerY);
         legendContainer.innerHTML = '';
         return;
     }
@@ -325,7 +352,7 @@ function updatePieChart() {
     
     // Add category spending
     for (const [category, amount] of Object.entries(categoryData.categories)) {
-        if (amount > 0) {
+        if (amount > 0 && categoryData.balance > 0) {
             const percentage = (amount / categoryData.balance) * 100;
             chartData.push({
                 label: category,
@@ -337,7 +364,7 @@ function updatePieChart() {
     }
     
     // Add unspent money as grey section
-    if (categoryData.remaining > 0) {
+    if (categoryData.remaining > 0 && categoryData.balance > 0) {
         const percentage = (categoryData.remaining / categoryData.balance) * 100;
         chartData.push({
             label: 'Unspent',
@@ -345,6 +372,16 @@ function updatePieChart() {
             percentage: percentage,
             color: categoryColors['Unspent']
         });
+    }
+    
+    // If no chart data to display, show message
+    if (chartData.length === 0) {
+        ctx.font = '16px Segoe UI';
+        ctx.fillStyle = '#999';
+        ctx.textAlign = 'center';
+        ctx.fillText('No data to display', centerX, centerY);
+        legendContainer.innerHTML = '';
+        return;
     }
     
     // Draw pie chart
@@ -384,12 +421,19 @@ function updatePieChart() {
 }
 
 // Get category spending data
-function getCategorySpendingData() {
-    // Filter out balance adjustment transactions
-    const filteredTransactions = transactions.filter(t => 
+function getCategorySpendingData(payPeriod = null) {
+    // Filter transactions for pay period if specified
+    let filteredTransactions = transactions.filter(t => 
         !t.description.includes('Balance Adjustment') && 
         !t.description.includes('Manual Balance Correction')
     );
+    
+    // If pay period specified, filter to that period only
+    if (payPeriod) {
+        filteredTransactions = filteredTransactions.filter(t => 
+            isTransactionInPayPeriod(t.date, payPeriod)
+        );
+    }
     
     const income = filteredTransactions
         .filter(t => t.type === 'income')
@@ -399,7 +443,14 @@ function getCategorySpendingData() {
         .filter(t => t.type === 'expense')
         .reduce((sum, t) => sum + t.amount, 0);
     
-    const balance = income - expenses + balanceOffset;
+    // For pay period view, use starting balance; otherwise use overall balance
+    let balance;
+    if (payPeriod) {
+        const startingBalance = getStartingBalance(payPeriod);
+        balance = startingBalance - expenses;
+    } else {
+        balance = income - expenses + balanceOffset;
+    }
     
     // Calculate spending by category
     const categories = {};
@@ -417,11 +468,19 @@ function getCategorySpendingData() {
             }
         });
     
+    // Calculate total available (starting balance for pay period view)
+    let totalAvailable;
+    if (payPeriod) {
+        totalAvailable = getStartingBalance(payPeriod);
+    } else {
+        totalAvailable = balance + expenses;
+    }
+    
     return {
         categories: categories,
         total: expenses,
         remaining: balance,
-        balance: balance + expenses // Total money available (spent + unspent)
+        balance: totalAvailable // Total money available (spent + unspent)
     };
 }
 
@@ -572,10 +631,6 @@ function getStartingBalance(payPeriodStart) {
     const periodKey = getPayPeriodKey(payPeriodStart);
     return startingBalances[periodKey] || 0;
 }
-
-// Global variables for pay period navigation
-let currentDisplayPayPeriod = getPayPeriodStart(new Date());
-let currentHistoryCategory = '';
 
 // Show category history modal
 function showCategoryHistory(category, payPeriod = null) {
@@ -931,6 +986,57 @@ function updateCountdown() {
             countdownTimer.classList.remove('countdown-urgent', 'countdown-soon');
         }
     }
+}
+
+// Setup pie chart navigation
+function setupPieChartNavigation() {
+    const prevMonthBtn = document.getElementById('pieChartPrevMonth');
+    const nextMonthBtn = document.getElementById('pieChartNextMonth');
+    
+    if (prevMonthBtn && nextMonthBtn) {
+        prevMonthBtn.addEventListener('click', navigatePieChartToPreviousMonth);
+        nextMonthBtn.addEventListener('click', navigatePieChartToNextMonth);
+    }
+}
+
+// Update the pie chart pay period display and navigation buttons
+function updatePieChartPayPeriodDisplay() {
+    const currentMonthEl = document.getElementById('pieChartCurrentMonth');
+    const prevMonthBtn = document.getElementById('pieChartPrevMonth');
+    const nextMonthBtn = document.getElementById('pieChartNextMonth');
+    
+    if (!currentMonthEl || !prevMonthBtn || !nextMonthBtn) return;
+    
+    // Format current pay period display
+    const displayText = getPayPeriodDisplay(currentPieChartPayPeriod);
+    currentMonthEl.textContent = displayText;
+    
+    // Check if we should disable next period button (don't allow future pay periods)
+    const today = new Date();
+    const nextPayPeriod = getNextPayPeriod(currentPieChartPayPeriod);
+    nextMonthBtn.disabled = nextPayPeriod > today;
+    
+    // Check if we should disable previous period button (no transactions before earliest transaction)
+    if (transactions.length > 0) {
+        const earliestTransaction = new Date(Math.min(...transactions.map(t => new Date(t.date))));
+        const earliestPayPeriod = getPayPeriodStart(earliestTransaction);
+        const prevPayPeriod = getPreviousPayPeriod(currentPieChartPayPeriod);
+        prevMonthBtn.disabled = prevPayPeriod < earliestPayPeriod;
+    } else {
+        prevMonthBtn.disabled = true;
+    }
+}
+
+// Navigate pie chart to previous pay period
+function navigatePieChartToPreviousMonth() {
+    currentPieChartPayPeriod = getPreviousPayPeriod(currentPieChartPayPeriod);
+    updatePieChart();
+}
+
+// Navigate pie chart to next pay period
+function navigatePieChartToNextMonth() {
+    currentPieChartPayPeriod = getNextPayPeriod(currentPieChartPayPeriod);
+    updatePieChart();
 }
 
 // =====================
