@@ -140,6 +140,11 @@
                         <!-- Spending Pie Chart -->
                         <div class="pie-chart-container">
                             <h3>Spending Overview</h3>
+                            <div class="month-navigation">
+                                <button id="pieChartPrevMonth" class="month-nav-btn">&lt; Previous Month</button>
+                                <span id="pieChartCurrentMonth" class="current-month">October 2025</span>
+                                <button id="pieChartNextMonth" class="month-nav-btn">Next Month &gt;</button>
+                            </div>
                             <canvas id="spendingPieChart" width="300" height="300"></canvas>
                             <div id="chartLegend" class="chart-legend"></div>
                         </div>
